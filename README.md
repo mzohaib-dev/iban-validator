@@ -2,10 +2,6 @@
 
 A lightweight web tool to validate International Bank Account Numbers (IBANs) by performing basic checks (format, length, checksum).
 
-## Screenshots
-
-![App Screenshot](https://via.placeholder.com/468x300?text=App+Screenshot+Here)
-
 ## Demo
 
 Check out the live demo of the IBAN validator [here](https://iban-validator.netlify.app/)
