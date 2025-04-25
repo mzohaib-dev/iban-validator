@@ -1,6 +1,5 @@
-
 import { useState, ChangeEvent } from 'react';
-import { formatIban, getValidationMessage, getCountryFromIban } from '@/utils/ibanUtils';
+import { formatIban, getValidationMessage, getCountryFromIban, extractBankAccountInfo } from '@/utils/ibanUtils';
 import Button from './Button';
 import Input from './Input';
 import IbanHistory from './IbanHistory';
@@ -10,6 +9,14 @@ const IbanValidator = () => {
   const [iban, setIban] = useState('');
   const [formattedIban, setFormattedIban] = useState('');
   const [validationResult, setValidationResult] = useState<{ isValid: boolean; message: string } | null>(null);
+  const [bankInfo, setBankInfo] = useState<{
+    isValid: boolean;
+    countryCode: string;
+    bankCode: string;
+    branchCode: string;
+    accountNumber: string;
+    message: string;
+  } | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -20,6 +27,12 @@ const IbanValidator = () => {
     if (isSubmitted) {
       const result = getValidationMessage(input);
       setValidationResult(result);
+      if (result.isValid) {
+        const info = extractBankAccountInfo(input);
+        setBankInfo(info);
+      } else {
+        setBankInfo(null);
+      }
     }
   };
 
@@ -29,11 +42,16 @@ const IbanValidator = () => {
     setIsSubmitted(true);
 
     if (result.isValid) {
+      const info = extractBankAccountInfo(iban);
+      setBankInfo(info);
+
       const history = JSON.parse(localStorage.getItem('ibanHistory') || '[]');
       if (!history.includes(formattedIban)) {
         const newHistory = [formattedIban, ...history].slice(0, 5);
         localStorage.setItem('ibanHistory', JSON.stringify(newHistory));
       }
+    } else {
+      setBankInfo(null);
     }
   };
 
@@ -102,6 +120,29 @@ const IbanValidator = () => {
             </div>
           )}
         </div>
+
+        {validationResult?.isValid && bankInfo?.isValid && (
+          <div className="bg-blue-50 rounded-lg p-4 animate-fade-in">
+            <h3 className="text-sm font-semibold text-gray-800 mb-2">Bank Account Information</h3>
+            <ul className="space-y-1 text-sm text-gray-700">
+              <li>
+                <span className="font-medium">Country Code:</span> {bankInfo.countryCode || 'Not available'}
+              </li>
+              <li>
+                <span className="font-medium">Bank Code:</span> {bankInfo.bankCode || 'Not available'}
+              </li>
+              {bankInfo.branchCode && (
+                <li>
+                  <span className="font-medium">Branch Code:</span> {bankInfo.branchCode}
+                </li>
+              )}
+              <li>
+                <span className="font-medium">Account Number:</span> {bankInfo.accountNumber || 'Not available'}
+              </li>
+            </ul>
+            <p className="text-xs text-gray-600 mt-2">{bankInfo.message}</p>
+          </div>
+        )}
 
         {validationResult?.isValid && (
           <div className="flex justify-end gap-2 animate-fade-in">

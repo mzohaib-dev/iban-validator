@@ -1,6 +1,5 @@
-
 /**
- * Utility functions for IBAN validation
+ * Utility functions for IBAN validation and information extraction
  */
 
 /**
@@ -85,5 +84,83 @@ export const getValidationMessage = (iban: string): { isValid: boolean; message:
   
   return isValid 
     ? { isValid: true, message: 'Valid IBAN' }
-    : { isValid: false, message: 'Invalid IBAN. Please check and try again' };
+    : { isValid: false, message: 'Invalid IBAN.' };
+};
+
+/**
+ * Extracts bank account information from a valid IBAN
+ * Returns bank code, branch code, and account number based on country-specific formats
+ */
+export const extractBankAccountInfo = (iban: string): {
+  isValid: boolean;
+  countryCode: string;
+  bankCode: string;
+  branchCode: string;
+  accountNumber: string;
+  message: string;
+} => {
+  const cleanedIban = iban.replace(/\s/g, '').toUpperCase();
+  const countryCode = getCountryFromIban(cleanedIban);
+  
+  // Validate IBAN first
+  const isValid = validateIban(cleanedIban);
+  if (!isValid) {
+    return {
+      isValid: false,
+      countryCode,
+      bankCode: '',
+      branchCode: '',
+      accountNumber: '',
+      message: 'Invalid IBAN. Cannot extract account information.'
+    };
+  }
+
+  let bankCode = '';
+  let branchCode = '';
+  let accountNumber = '';
+
+  // Country-specific IBAN parsing
+  switch (countryCode) {
+    case 'DE': // Germany (22 characters: DEkk bbbb bbbb cccc cccc cc)
+      if (cleanedIban.length === 22) {
+        bankCode = cleanedIban.slice(4, 12); // 8-digit bank code
+        accountNumber = cleanedIban.slice(12, 22); // 10-digit account number
+        branchCode = ''; // Germany doesn't use branch code in IBAN
+      }
+      break;
+
+    case 'FR': // France (27 characters: FRkk bbbb bsss sscc cccc cccc ckk)
+      if (cleanedIban.length === 27) {
+        bankCode = cleanedIban.slice(4, 9); // 5-digit bank code
+        branchCode = cleanedIban.slice(9, 14); // 5-digit branch code
+        accountNumber = cleanedIban.slice(14, 25); // 11-digit account number
+      }
+      break;
+
+    case 'GB': // United Kingdom (22 characters: GBkk bbbb ssss sscc cccc cc)
+      if (cleanedIban.length === 22) {
+        bankCode = cleanedIban.slice(4, 8); // 4-character bank code
+        branchCode = cleanedIban.slice(8, 14); // 6-digit sort code
+        accountNumber = cleanedIban.slice(14, 22); // 8-digit account number
+      }
+      break;
+
+    default:
+      // Generic fallback: assume bank code is after country code + check digits
+      // and account number is the rest. No branch code for unknown formats.
+      if (cleanedIban.length >= 15) {
+        bankCode = cleanedIban.slice(4, 8); // Assume first 4 digits after check digits
+        accountNumber = cleanedIban.slice(8); // Rest is account number
+        branchCode = '';
+      }
+  }
+
+  return {
+    isValid: true,
+    countryCode,
+    bankCode,
+    branchCode,
+    accountNumber,
+    message: bankCode ? 'Successfully extracted bank account information' : 'Partial information extracted due to unknown country format'
+  };
 };
